@@ -24,5 +24,3 @@ ds2<-read.csv("CountyxIncome.csv")
 # https://www.irs.gov/uac/soi-tax-stats-individual-income-tax-statistics-2014-zip-code-data-soi
 
 ds3<-read.csv("IRSIncomeTax.csv")
-
-
