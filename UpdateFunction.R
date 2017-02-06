@@ -1,3 +1,5 @@
+#NOTE: seems to work fine from within the R editor itself, but not within RStudio
+
 # installing/loading the package:
 if(!require(installr)) {
   install.packages("installr"); require(installr)} #load / install+load installr
