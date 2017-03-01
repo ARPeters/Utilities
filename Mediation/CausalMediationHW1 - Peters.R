@@ -3,6 +3,9 @@
 
 rm(list = ls())
 library(lavaan)
+library(mediation)
+library(sandwich)
+
 #Simulate the Preacher and Hayes hypothetical Cog Therapy -> Failure Outlook -> Life Satisfaction study data
 #First, assume the following:
 #M = b0mx + .8186*X + e3
