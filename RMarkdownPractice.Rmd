@@ -1,0 +1,55 @@
+---
+title: "RMarkdown Practice"
+author: 'Andrew Peters'
+output: html_document
+---
+
+# Syntax practice!
+
+###### This is how you control the size of headers.
+###### Fun fact: an alternate name for the pound-sign is the octothorpe
+
+Here is an an equation with pi and exponents  
+$area=\pi*r^2$  
+
+
+>This is a block quote, announcing a pair of lists
+
+* unordered list
+* same list, item 1
+  + sub-item 1
+
+
+1. ordered list item 1
+2. item 2
+
+
+~~This is a completely original set of examples~~  
+**Below** is the link with these examples  
+[link](https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf)  
+
+### Here is a midsized header, announcing a table.  
+
+
+### Things I wasn't able to get working:  
+* Inserting images  
+* Creating tables within the rmarkdown text editor  
+
+# Embedding code:  
+
+
+```{r, eval = TRUE, echo=FALSE}
+dim(iris)
+```
+
+## Embedding external code:  
+First, read in the r file using the "read_chunk()" command in a chunk of code like so:  
+
+```{r}
+knitr::read_chunk('ExternalChunkExample.R')  
+```
+
+then embed code asking for the chunk by it's label (which must be added in R file), like so:  
+
+```{r CountyIncomeHead}
+```
