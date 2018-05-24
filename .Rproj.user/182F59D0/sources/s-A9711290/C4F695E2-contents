@@ -1,0 +1,356 @@
+# rmarkdown::render("./OsdhReports/cqi/cqi-1/cqi-1-flexdashboard.Rmd", params = list(program_codes=779))
+# rmarkdown::render("./OsdhReports/cqi/cqi-1/cqi-1-flexdashboard.Rmd", params = list(program_codes=integer(0)))
+rm(list=ls(all=TRUE)) #Clear the memory of variables from previous run. This is not called by knitr, because it's above the first chunk
+
+# ---- load-sources ------------------------------------------------------------
+# base::source(file="./Dal/Osdh/Ellis/common-ellis.R") #Load common munging functions.
+# base::source(file="./Dal/Osdh/Arch/benchmark-client-program-arch.R") #Load retrieve_benchmark_client_program
+base::source(file="./analysis/common/display-1.R") #Load common graphing functions.
+
+
+# ---- load-packages -----------------------------------------------------------
+library(miechv3)
+library(magrittr) #Pipes
+library(ggplot2) #For graphing
+library(plotly) # devtools::install_github("ropensci/plotly")
+requireNamespace("dplyr")
+requireNamespace("tidyr") #For converting wide to long
+requireNamespace("broom")
+requireNamespace("kableExtra")
+requireNamespace("scales") #For formating values in graphs
+requireNamespace("TabularManifest") # devtools::install_github("Melinae/TabularManifest")
+
+# ---- declare-globals ---------------------------------------------------------
+options(show.signif.stars=F) #Turn off the annotations on p-values
+desired_models                   <- "PAT"
+program_focus                    <- 752L
+program_name_desired             <- "PAT/HFA-Parent Promise"
+base_size                        <- 14L
+
+path_in_directory                <- "S:/CCAN/CCANResEval/MIECHV/RedCap/Chomp/DataSnapshots/derived/peters"
+path_in_program_week             <- file.path(path_in_directory, "752-program-week.rds")
+
+path_in_annotation               <- "./data-public/raw/programs/cqi-annotation-example.csv"
+
+start_of_time                    <- as.Date("2015-01-05")
+# start_of_pdsa_results            <- as.Date("2018-02-19")
+start_of_card_records            <- as.Date("2018-02-19")
+start_date_spaghetti             <- as.Date("2017-01-01")
+start_date_check_in_records      <- as.Date("2016-10-31")
+
+headline_distant_past            <- c(paste(start_of_time, "to", start_of_card_records, "\n Average across", (as.integer(start_of_card_records - start_of_time) %/% 7), "Weeks"))
+headline_recent_past             <- c(paste(start_of_card_records, "to", (dump_date_eto() - 6), "\n Average across", (as.integer((dump_date_eto() -6) -  start_of_card_records) %/% 7), "Weeks"))
+headline_last_week               <- c(paste("The Week of", (dump_date_eto() - 6)))
+
+# ---- load-data ---------------------------------------------------------------
+ds_program_week       <- readr::read_rds(path_in_program_week    )
+ds_annotation         <- readr::read_csv(path_in_annotation, col_types=col_types_annotation(), comment="#")
+
+# ---- tweak-data --------------------------------------------------------------
+ds_program_week <- ds_program_week %>%
+  dplyr::filter(model_name %in% desired_models) %>%
+  # dplyr::filter(as.Date("2017-07-01") <= week) %>%
+  dplyr::filter(as.Date("2015-01-01") <= week) %>%
+    dplyr::mutate(
+    emphasis        = dplyr::if_else(program_code == program_focus, "focus", "background"),
+    program_code    = factor(program_code),
+    model_name      = droplevels(factor(model_name))
+  ) %>%
+  dplyr::mutate(
+    visit_completed_proportion            = round(visit_completed_count / visit_scheduled_count, digits=2),
+    visit_check_in_attempted_proportion   = round(visit_check_in_attempted / visit_scheduled_count, digits=2),
+    visit_check_in_completed_proportion   = round(visit_check_in_completed / visit_scheduled_count, digits=2),
+    visit_reminder_card_proportion        = round(visit_reminder_card / visit_scheduled_count, digits=2),
+    visit_check_in_unsuccessful           = round(visit_check_in_attempted - visit_check_in_completed, digits=1),
+    unreachable_count                     = ifelse(is.na(unreachable_count), 0, unreachable_count)
+  )
+
+ds_program_week_histogrammable <- ds_program_week %>%
+  dplyr::filter(program_name == program_name_desired)
+
+# ---- headline-graph ----------------------------------------------------------
+headline<-ds_program_week %>%
+  dplyr::filter(program_code %in% "752") %>%
+  dplyr::mutate(
+    Time_Period = ifelse(week < start_of_card_records,  "1", ifelse(
+      (week <= dump_date_eto() - 7), "2", "3"))
+  ) %>%
+  dplyr::group_by(Time_Period) %>%
+  dplyr::summarise(Proportion_Completed = round(mean(visit_completed_proportion), 2)) %>%
+  dplyr::mutate(groupvar = c("Parent Promise", "Parent Promise", "Parent Promise")) %>%
+  ggplot(aes(x=Time_Period, y=Proportion_Completed, group=groupvar, fill=groupvar)) +
+  labs(x        = "Time Period",
+       y        = "Proportion of Visits Completed",
+       title    = "Parent Promise: Proportion of Visits Completed",
+       subtitle = "Goal: 75% of visits completed"
+  ) +
+  geom_line(size=2) +
+  coord_cartesian(ylim=c(0,1)) +
+  geom_hline(yintercept=0.75, color="red", linetype="longdash", size=1) +
+  scale_linetype_manual(values=c("solid")) +
+  geom_label(size = c(5,5,4), aes(label=Proportion_Completed), fill = "cyan") +
+  scale_y_continuous(labels = scales::percent) +
+  repo_theme(base_size = 16) +
+  scale_x_discrete (labels = c(headline_distant_past, headline_recent_past, headline_last_week))
+
+headline
+
+# ---- tables-program-week ----------------------------------------------------------
+
+dt_format <- function( d ){
+  d %>%
+    dplyr::rename(
+      count_scheduled               = visit_scheduled_count,
+      count_completed               = visit_completed_count,
+      proportion_completed          = visit_completed_proportion,
+      check_in_attempted            = visit_check_in_attempted,
+      check_in_attempted_proportion = visit_check_in_attempted_proportion,
+      check_in_completed            = visit_check_in_completed,
+      check_in_completed_proportion = visit_check_in_completed_proportion,
+      check_in_failed               = visit_check_in_unsuccessful,
+      reminder_card                 = visit_reminder_card,
+      reminder_card_proportion      = visit_reminder_card_proportion
+    ) %>%
+    DT::datatable(
+      colnames=gsub("_", " ", colnames(.)),
+      options = list(
+        pageLength = 16
+      )
+    ) %>%
+    DT::formatCurrency(
+      columns  = c(
+        # "visit_count_past_4_weeks_mean"
+      ),
+      currency = "",
+      digits   = 2
+    ) %>%
+    DT::formatCurrency(
+      columns  = c(
+        "count_scheduled",
+        "count_completed",
+        "proportion_completed",
+        "check_in_attempted",
+        "check_in_attempted_proportion",
+        "check_in_completed",
+        "check_in_completed_proportion",
+        "reminder_card",
+        "reminder_card_proportion",
+        "unreachable_count"
+      ),
+      currency = "",
+      digits   = c(0,0,2,0,2,0,2,0,2,0)
+    ) %>%
+    DT::formatPercentage(
+      columns  = c(
+      ),
+      digits   = 0
+    )
+}
+
+ds_program_week  %>%
+  dplyr::filter(week > start_date_spaghetti & program_code %in% 752) %>%
+  dplyr::select(
+    program_name, week,
+    visit_scheduled_count,
+    visit_completed_count,
+    visit_completed_proportion,
+    visit_check_in_attempted,
+    visit_check_in_attempted_proportion,
+    visit_check_in_completed,
+    visit_check_in_completed_proportion,
+    visit_reminder_card,
+    visit_reminder_card_proportion,
+    visit_check_in_unsuccessful,
+    unreachable_count
+  ) %>%
+  dplyr::arrange(desc(week)) %>%
+  dt_format()
+
+
+# ---- tables-annotation ----------------------------------------------------------
+ds_annotation %>%
+  DT::datatable(
+    colnames=gsub("_", " ", colnames(.)),
+    options = list(
+      pageLength = 16
+    )
+  )
+
+# ---- spaghetti ------------------------------------------------------------
+cat("\n\n### Proportion of Visits completed<br/>Outcome Measure\n\n")
+(
+  ds_program_week %>%
+    dplyr::filter(week >= start_date_spaghetti) %>%
+    spaghetti_1(
+      response_variable = "visit_completed_proportion",
+      time_variable     = "week",
+      group_variable    = "program_name",
+      point_size=4,
+      y_title="Proportion of visits completed", sub_title="Outcome Measure"
+    ) +
+  scale_y_continuous(labels=scales::percent_format())
+) %>%
+  ggplotly()
+
+
+cat("\n\n### Proportion of Attempted Check-Ins<br/>Process Measure\n\n")
+(
+  ds_program_week %>%
+    dplyr::filter(week >= start_date_spaghetti) %>%
+    tidyr::drop_na(visit_check_in_attempted_proportion) %>%
+      spaghetti_1(
+      response_variable = "visit_check_in_attempted_proportion",
+      time_variable     = "week",
+      group_variable    = "program_name",
+      point_size=4,
+      y_title="Proportion of visits preceded by an attempted phone call", sub_title="Process Measure"
+    )
+) %>%
+  ggplotly()
+
+cat("\n\n### Proportion of Proportions Successful Check-Ins<br/>Process Measure\n\n")
+(
+  ds_program_week %>%
+    dplyr::filter(week >= start_date_spaghetti) %>%
+    spaghetti_1(
+      response_variable = "visit_check_in_completed_proportion",
+      time_variable     = "week",
+      group_variable    = "program_name",
+      point_size=4,
+      y_title="Proportion of visits preceded by a successful phone-call", sub_title="Process Measure"
+    )
+) %>%
+  ggplotly()
+
+cat("\n\n### Proportion of Families Receiving Reminder Cards<br/>Process Measure\n\n")
+(
+  ds_program_week %>%
+    dplyr::filter(week >= start_of_card_records) %>%
+    spaghetti_1(
+      response_variable = "visit_reminder_card_proportion",
+      time_variable     = "week",
+      group_variable    = "program_name",
+      point_size=4,
+      y_title="Proportion of Families Receiving Reminder Card", sub_title="Process Measure"
+    )
+) %>%
+  ggplotly()
+
+
+cat("\n\n### Number of Unsuccessful Attempts to Check In by Phone<br/>Disruptor Measure\n\n")
+(
+  ds_program_week %>%
+    dplyr::filter(week >= start_date_spaghetti) %>%
+    spaghetti_1(
+      response_variable = "visit_check_in_unsuccessful",
+      time_variable     = "week",
+      group_variable    = "program_name",
+      point_size=4,
+      y_title="Number families who could not be contacted by phone", sub_title="Disruptor Measure"
+    )
+) %>%
+  ggplotly()
+
+
+cat("\n\n### Number of Families Exiting Program by Reason of Being Unreachable<br/>Disruptor Measure\n\n")
+(
+  ds_program_week %>%
+    dplyr::filter(week >= start_date_spaghetti) %>%
+    spaghetti_1(
+      response_variable = "unreachable_count",
+      time_variable     = "week",
+      group_variable    = "program_name",
+      point_size=4,
+      y_title="Number families exiting the program by being 'Unreachable'", sub_title="Disruptor Measure"
+    )
+) %>%
+  ggplotly()
+
+
+# ---- marginals ---------------------------------------------------------------
+ds_program_week_histogrammable %>%
+  histogram_2(
+    # d_observed            = ds_program_week,
+    variable_name         = "visit_scheduled_count",
+    bin_width             = 5,
+    rounded_digits        = 0,
+    x_title               = "Visits Scheduled",
+    main_title            = paste("Visits Scheduled:", start_of_time, "to", (dump_date_eto()-6), sep=" "),
+    hover_text_template   = paste("There were {count} weeks with\n between {boundary_left_pretty} and {boundary_right_pretty} visits scheduled since", start_of_time, sep=" ")
+  )
+
+ds_program_week_histogrammable %>%
+  histogram_2(
+    variable_name         = "visit_completed_count"  ,
+    bin_width             = 5,
+    rounded_digits        = 0,
+    x_title               = "Visits Completed",
+    main_title            = paste("Visits Completed: ", start_of_time, "to", (dump_date_eto()-6), sep=" "),
+    hover_text_template   = paste("There were {count} weeks with\n between {boundary_left_pretty} and {boundary_right_pretty} visits completed since", start_of_time, sep=" ")
+  )
+
+ds_program_week_histogrammable %>%
+  histogram_2(
+    variable_name         = "visit_completed_proportion",
+    bin_width             = .05,
+    rounded_digits        = 1,
+    x_title               = "Proportion of Visits Completed to Visits Scheduled",
+    main_title            = paste("Proportion of Visits Completed:", start_of_time, "to", (dump_date_eto()-6), sep=" "),
+    hover_text_template   = paste("There were {count} weeks with\n between {boundary_left_pretty} and {boundary_right_pretty} percent of visits completed since", start_of_time, sep=" ")
+  )
+
+ds_program_week_histogrammable %>%
+  dplyr::filter(week >= start_date_check_in_records) %>%
+  histogram_2(
+    variable_name         = "visit_check_in_attempted_proportion",
+    bin_width             = .05,
+    rounded_digits        = 1,
+    x_title               = "Proportion of Visits Preceded by Attempted Phone Call to Visits Scheduled",
+    main_title            = paste("Proportion of Visits Preceded by Attempted Phone Call:", start_date_check_in_records, "to", (dump_date_eto()-6), sep=" "),
+    hover_text_template   = paste("There were {count} weeks with\n between {boundary_left_pretty} and {boundary_right_pretty} percent of visits preceded by a check-in call attempt since", start_date_check_in_records, sep=" ")
+  )
+
+ds_program_week_histogrammable %>%
+  dplyr::filter(week >= start_date_check_in_records) %>%
+  histogram_2(
+    variable_name         = "visit_check_in_completed_proportion",
+    bin_width             = .05,
+    rounded_digits        = 1,
+    x_title               = "Proportion of Visits Preceded by Successful Phone Call to Visits Scheduled",
+    main_title            = paste("Proportion of Visits Preceded by Successful Phone Call:", start_date_check_in_records, "to", (dump_date_eto()-6), sep=" "),
+    hover_text_template   = paste("There were {count} weeks with\n between {boundary_left_pretty} and {boundary_right_pretty} percent of visits preceded by a successful check-in call since", start_date_check_in_records, sep=" ")
+  )
+
+ds_program_week_histogrammable %>%
+  dplyr::filter(week >= start_of_card_records) %>%
+  histogram_2(
+    variable_name         = "visit_reminder_card_proportion",
+    bin_width             = .05,
+    rounded_digits        = 1,
+    x_title               = "Proportion of Visits Given A Reminder Card to Visits Scheduled",
+    main_title            = paste("Proportion of Visits Given a Reminder Card:", start_of_card_records, "to", (dump_date_eto()-6), sep=" "),
+    hover_text_template   = paste("There were {count} weeks with\n between {boundary_left_pretty} and {boundary_right_pretty} percent of visits given a reminder card since", start_of_card_records, sep=" ")
+  )
+
+ds_program_week_histogrammable %>%
+  dplyr::filter(week >= start_date_check_in_records) %>%
+  histogram_2(
+    variable_name         = "visit_check_in_unsuccessful",
+    bin_width             = 1,
+    rounded_digits        = 0,
+    x_title               = "Count of families who could not be reached by phone",
+    main_title            = paste("Count of Unsuccessful Check-In Phone Calls:", start_date_check_in_records, "to", (dump_date_eto()-6), sep=" "),
+    hover_text_template   = paste("There were {count} weeks with\n between {boundary_left_pretty} and {boundary_right_pretty} unsuccessful attempts to check in since", start_date_check_in_records, sep=" ")
+  )
+
+ds_program_week_histogrammable %>%
+  histogram_2(
+    variable_name         = "unreachable_count",
+    bin_width             = 1,
+    rounded_digits        = 0,
+    x_title               = "Count of families who exited program by reason of being unreachable",
+    # main_title            = "Unreachable families",
+    # hover_text_template   = "There were {count} weeks with\n between {boundary_left_pretty} and {boundary_right_pretty} clients lost to follow up."
+    main_title            = paste("Count of Unreachable Families:", start_of_time, "to", (dump_date_eto()-6), sep=" "),
+    hover_text_template   = paste("There were {count} weeks with\n between {boundary_left_pretty} and {boundary_right_pretty} families found unreachable since", start_of_time, sep=" ")
+  )

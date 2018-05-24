@@ -1,0 +1,5 @@
+TITLE: Your title goes here
+DATA: FILE = "./MPLUS_automation_practice/practice_data_prep";
+VARIABLE: 
+NAMES = hp wt carb; 
+MISSING=.;

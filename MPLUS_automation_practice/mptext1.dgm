@@ -1,0 +1,29 @@
+VERSION 1.1.0
+INPUT
+TITLE:
+ Your title goes here
+DATA:
+ FILE = "./MPLUS_automation_practice/practice_data_prep";
+VARIABLE:
+NAMES = hp wt carb;
+MISSING=.;
+INPUT_END
+2
+0
+0
+0
+ML
+1
+GENERAL
+0
+3
+0
+0
+hp wt carb
+1
+0 0 0
+0
+0
+5 1 hp 4553.964 1138.491
+5 1 wt    0.927    0.232
+5 1 carb    2.527    0.632

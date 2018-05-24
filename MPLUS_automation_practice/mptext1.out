@@ -1,0 +1,185 @@
+Mplus VERSION 8
+MUTHEN & MUTHEN
+05/24/2018   3:08 PM
+
+INPUT INSTRUCTIONS
+
+  TITLE: Your title goes here
+  DATA: FILE = "./MPLUS_automation_practice/practice_data_prep";
+  VARIABLE:
+  NAMES = hp wt carb;
+  MISSING=.;
+
+
+
+*** WARNING in MODEL command
+  All variables are uncorrelated with all other variables in the model.
+  Check that this is what is intended.
+   1 WARNING(S) FOUND IN THE INPUT INSTRUCTIONS
+
+
+
+Your title goes here
+
+SUMMARY OF ANALYSIS
+
+Number of groups                                                 1
+Number of observations                                          32
+
+Number of dependent variables                                    3
+Number of independent variables                                  0
+Number of continuous latent variables                            0
+
+Observed dependent variables
+
+  Continuous
+   HP          WT          CARB
+
+
+Estimator                                                       ML
+Information matrix                                        OBSERVED
+Maximum number of iterations                                  1000
+Convergence criterion                                    0.500D-04
+Maximum number of steepest descent iterations                   20
+Maximum number of iterations for H1                           2000
+Convergence criterion for H1                             0.100D-03
+
+Input data file(s)
+  ./MPLUS_automation_practice/practice_data_prep
+
+Input data format  FREE
+
+
+SUMMARY OF DATA
+
+     Number of missing data patterns             1
+
+
+COVARIANCE COVERAGE OF DATA
+
+Minimum covariance coverage value   0.100
+
+
+     PROPORTION OF DATA PRESENT
+
+
+           Covariance Coverage
+              HP            WT            CARB
+              ________      ________      ________
+ HP             1.000
+ WT             1.000         1.000
+ CARB           1.000         1.000         1.000
+
+
+
+UNIVARIATE SAMPLE STATISTICS
+
+
+     UNIVARIATE HIGHER-ORDER MOMENT DESCRIPTIVE STATISTICS
+
+         Variable/         Mean/     Skewness/   Minimum/ % with                Percentiles
+        Sample Size      Variance    Kurtosis    Maximum  Min/Max      20%/60%    40%/80%    Median
+
+     HP                  146.688       0.761      52.000    3.12%      91.000    110.000    123.000
+              32.000    4553.965       0.052     335.000    3.12%     150.000    205.000
+     WT                    3.217       0.444       1.513    3.12%       2.200      3.150      3.325
+              32.000       0.927       0.172       5.424    3.12%       3.440      3.780
+     CARB                  2.812       1.102       1.000   21.88%       1.000      2.000      2.000
+              32.000       2.527       1.536       8.000    3.12%       3.000      4.000
+
+
+THE MODEL ESTIMATION TERMINATED NORMALLY
+
+
+
+MODEL FIT INFORMATION
+
+Number of Free Parameters                        6
+
+Loglikelihood
+
+          H0 Value                        -284.628
+          H1 Value                        -262.020
+
+Information Criteria
+
+          Akaike (AIC)                     581.256
+          Bayesian (BIC)                   590.050
+          Sample-Size Adjusted BIC         571.346
+            (n* = (n + 2) / 24)
+
+Chi-Square Test of Model Fit
+
+          Value                             45.217
+          Degrees of Freedom                     3
+          P-Value                           0.0000
+
+RMSEA (Root Mean Square Error Of Approximation)
+
+          Estimate                           0.663
+          90 Percent C.I.                    0.501  0.840
+          Probability RMSEA <= .05           0.000
+
+CFI/TLI
+
+          CFI                                0.000
+          TLI                                0.000
+
+Chi-Square Test of Model Fit for the Baseline Model
+
+          Value                             45.217
+          Degrees of Freedom                     3
+          P-Value                           0.0000
+
+SRMR (Standardized Root Mean Square Residual)
+
+          Value                              0.362
+
+
+
+MODEL RESULTS
+
+                                                    Two-Tailed
+                    Estimate       S.E.  Est./S.E.    P-Value
+
+ Means
+    HP               146.688     11.929     12.296      0.000
+    WT                 3.217      0.170     18.898      0.000
+    CARB               2.812      0.281     10.008      0.000
+
+ Variances
+    HP              4553.964   1138.491      4.000      0.000
+    WT                 0.927      0.232      4.000      0.000
+    CARB               2.527      0.632      4.000      0.000
+
+
+QUALITY OF NUMERICAL RESULTS
+
+     Condition Number for the Information Matrix              0.448E-01
+       (ratio of smallest to largest eigenvalue)
+
+
+DIAGRAM INFORMATION
+
+  Use View Diagram under the Diagram menu in the Mplus Editor to view the diagram.
+  If running Mplus from the Mplus Diagrammer, the diagram opens automatically.
+
+  Diagram output
+    c:\users\apeters4\documents\github\utilities\mplus_automation_practice\mptext1.dgm
+
+     Beginning Time:  15:08:51
+        Ending Time:  15:08:51
+       Elapsed Time:  00:00:00
+
+
+
+MUTHEN & MUTHEN
+3463 Stoner Ave.
+Los Angeles, CA  90066
+
+Tel: (310) 391-9971
+Fax: (310) 391-8971
+Web: www.StatModel.com
+Support: Support@StatModel.com
+
+Copyright (c) 1998-2017 Muthen & Muthen
