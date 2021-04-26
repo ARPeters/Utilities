@@ -19,7 +19,7 @@ path_in      <- "./link-king-names/names-celebrities/names_raw.csv"
 
 col_types = readr::cols_only(
     birth_year     = readr::col_integer(),
-    primary_name   = readr::col_character(),
+    primary_name   = readr::col_character()
     # X3             = readr::col_character(),
     # X4             = readr::col_character()
 )
@@ -86,5 +86,7 @@ dsq2 <-
    dob         = paste(birth_year, birth_month, birth_day, sep = "-")
   )
 
+
+# TEST TEST TEST TEST
 
 
