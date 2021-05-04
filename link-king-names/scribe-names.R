@@ -43,16 +43,56 @@ fake_ssn_with_repeats_function <- function(d){
     ) %>% 
     dplyr::select(
       -area,
-      -group,
+      # -group,
       -serial,
-      -area_3,
+      # -area_3,
       -group_2,
-      -serial_4
+      # -serial_4,
     )
-  
   
   return(d)
   
+}
+
+generate_nickname <- function(d){
+  d <-
+    d %>% 
+    dplyr::mutate(
+      name_first_nickname = name_first_w
+    ) %>% 
+    dplyr::mutate(
+      name_first_nickname = dplyr::case_when(
+        name_first_nickname %in% c("Jon", "Johnny", "Jonathan")                              ~ "Jon",
+        name_first_nickname %in% c("Richard","Dick", "Richie")                               ~ "Rich",
+        name_first_nickname %in% c("James", "Jimmy", "Jameson")                              ~ "Jim",
+        name_first_nickname %in% c("Georges")                                                ~ "George",
+        name_first_nickname %in% c("Frederico", "Freddy", "Frederick", "Alfred", "Federico") ~ "Fred",
+        name_first_nickname %in% c("Gerold", "Gérard", "Gerard")                             ~ "Jerry",
+        name_first_nickname %in% c("Alex", "Alexander", "Alec", "Alan", "Allen", "Aleksey")  ~ "Al",
+        name_first_nickname %in% c("Margaux", "Margarite", "Margaret", "Maggie")             ~ "Marge",
+        name_first_nickname %in% c("Katharine", "Catharine", "Katharyn", "Katy")             ~ "Kate",
+        name_first_nickname %in% c("Charles", "Charlton")                                    ~ "Charlie",
+        name_first_nickname %in% c("William", "Liam", "Bill", "Billy")                       ~ "Will",
+        name_first_nickname %in% c("Peter")                                                  ~ "Pete",
+        name_first_nickname %in% c("Marilyn")                                                ~ "Mary",
+        name_first_nickname %in% c("David")                                                  ~ "Dave",
+        name_first_nickname %in% c("Laurence")                                               ~ "Larry",
+        name_first_nickname %in% c("Anthony", "Antonio")                                     ~ "Tony",
+        name_first_nickname %in% c("Elizabeth")                                              ~ "Liz",
+        name_first_nickname %in% c("François", "Franz")                                      ~ "Frank",
+        name_first_nickname %in% c("Thomas", "Tom")                                          ~ "Tommy",
+        name_first_nickname %in% c("Jacob", "Jakob")                                         ~ "Jake",
+        name_first_nickname %in% c("Robert", "Robbie")                                       ~ "Rob",
+        name_first_nickname %in% c("Robert", "Robbie")                                       ~ "Rob",
+        name_first_nickname %in% c("Walter", "Wallace")                                      ~ "Wally",
+        name_first_nickname %in% c("Stephen", "Steven")                                      ~ "Steve",
+        
+        TRUE                                                                                 ~ name_first_w
+        
+      ),
+      
+      nicknamed = dplyr::if_else(name_first_nickname != name_first, TRUE, FALSE)
+    )
 }
 
 
@@ -81,7 +121,7 @@ dsq2 <-
   dplyr::mutate(
     rown_o = 1:dplyr::n(),
   ) %>% 
-  dplyr::filter(rown_o <= 100 ) %>%
+  dplyr::filter(rown_o <= 3000 ) %>%
   dplyr::filter(!is.na(birth_year)) %>% 
   dplyr::group_by(rown_o) %>% 
   dplyr::mutate(
@@ -135,12 +175,21 @@ dsq2 <-
     
     name_middle_missing = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.40)),
     name_maiden_missing = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.40)),
-    gender_missing      = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.40)),
     
     gender_swapped      = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.20)),
+    gender_missing      = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.40)),
+
+    ssn_typo            = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.20)),
+    ssn_missing         = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.50)),
     
-    name_middle_w = dplyr::if_else(name_middle_missing, NA_character_, name_middle_w),
-    name_maiden_w = dplyr::if_else(name_maiden_missing, NA_character_, name_maiden_w),
+    ethnicity_swapped   = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.20)),
+    ethnicity_missing   = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.20)),
+    
+    dob_increment       = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.30)),
+    dob_missing         = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.30)),
+    
+    name_middle_w       = dplyr::if_else(name_middle_missing, NA_character_, name_middle_w),
+    name_maiden_w       = dplyr::if_else(name_maiden_missing, NA_character_, name_maiden_w),
     
     gender_w      = dplyr::case_when(
       !gender_swapped ~ gender_w,
@@ -148,6 +197,26 @@ dsq2 <-
       gender_swapped & gender_w == "Female" ~ "Male",
     ),
     
-    gender_w      = dplyr::if_else(gender_missing     , NA_character_, gender_w     ),
-  )
+    gender_w      = dplyr::if_else(gender_missing , NA_character_ , gender_w  ),
+    
+    ssn_fake_w    = dplyr::if_else(ssn_missing    , NA_character_ , ssn_fake_w),
+    
+    ssn_fake_w    = dplyr::if_else(ssn_typo, paste(area_3, stringr::str_pad((group+1) , 2, pad = "0"), serial_4, sep = "-"), ssn_fake_w),
+    # ssn_fake_w    = dplyr::if_else(ssn_typo, paste(dsq2$area_3, stringr::str_pad((dsq2$group+1) , 2, pad = "0"), dsq2$serial_4, sep = "-"), ssn_fake_w),
+    
+    ethnicity_w   = dplyr::case_when(
+      !ethnicity_swapped                ~ ethnicity_w,
+      ethnicity_w == "African American" ~ "Asian",
+      ethnicity_w == "Asian"            ~ "Hispanic",
+      ethnicity_w == "Hispanic"         ~ "Caucasian",
+      ethnicity_w == "Caucasian"        ~ "Native American",
+      ethnicity_w == "Native American"  ~ "African American"
+    ),
+    
+    ethnicity_w = dplyr::if_else(ethnicity_missing, NA_character_, ethnicity_w),
+    
+    dob_w       = dplyr::if_else(!dob_increment, dob_w, as.Date(paste(birth_year+1, birth_month, birth_day, sep = "-"))),
+    dob_w       = dplyr::if_else(!dob_missing, dob_w, as.Date(NA)),
+  ) %>% 
+  generate_nickname()
 
