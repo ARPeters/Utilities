@@ -104,6 +104,8 @@ ds_names_raw <- readr::read_csv(path_in, col_types=col_types)
 
 rm(path_in, col_types)
 
+
+# ---- tweak-data ---------------------------------------------------------------
 # dsq <-
 #   ds_names_raw %>%
 #   tibble::as_tibble() %>% 
@@ -116,7 +118,7 @@ set.seed(1321)
 
 floor(runif(19, min = 0, max = 2))
 
-dsq2 <-
+ds_middleman <-
   ds_names_raw %>% 
   dplyr::mutate(
     rown_o = 1:dplyr::n(),
@@ -155,7 +157,7 @@ dsq2 <-
    
    dob         = as.Date(paste(birth_year, birth_month, birth_day, sep = "-")),
    
-   zip_code    = zip_code(n = dplyr::n(), k = dplyr::n())
+   zip_code    = as.integer(zip_code(n = dplyr::n(), k = dplyr::n()))
    
   ) %>% 
   fake_ssn_with_repeats_function() %>% 
@@ -171,6 +173,7 @@ dsq2 <-
     gender_w        = gender,
     ethnicity_w     = ethnicity,
     dob_w           = dob,
+    zip_code_w      = zip_code,
     ssn_fake_w      = ssn_fake,
     
     name_middle_missing = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.40)),
@@ -187,6 +190,9 @@ dsq2 <-
     
     dob_increment       = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.30)),
     dob_missing         = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.30)),
+    
+    zip_typo            = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.30)),
+    zip_missing         = as.logical(rbinom(n = dplyr::n(), size = 1, prob = 0.30)),
     
     name_middle_w       = dplyr::if_else(name_middle_missing, NA_character_, name_middle_w),
     name_maiden_w       = dplyr::if_else(name_maiden_missing, NA_character_, name_maiden_w),
@@ -217,6 +223,176 @@ dsq2 <-
     
     dob_w       = dplyr::if_else(!dob_increment, dob_w, as.Date(paste(birth_year+1, birth_month, birth_day, sep = "-"))),
     dob_w       = dplyr::if_else(!dob_missing, dob_w, as.Date(NA)),
+    
+    zip_code_w  = dplyr::if_else(!zip_typo   , zip_code_w, zip_code_w+1L),
+    zip_code_w  = dplyr::if_else(!zip_missing, zip_code_w, NA_integer_)
+    
   ) %>% 
-  generate_nickname()
+  generate_nickname() %>% 
+  dplyr::mutate(
+    name_first_w       = name_first_nickname,
 
+    gender_swapped     = dplyr::if_else(gender_missing,    FALSE, gender_swapped    ),
+    ssn_typo           = dplyr::if_else(ssn_missing,       FALSE, ssn_typo          ),
+    ethnicity_swapped  = dplyr::if_else(ethnicity_missing, FALSE, ethnicity_swapped ),
+    dob_increment      = dplyr::if_else(dob_missing,       FALSE, dob_increment     ),
+    zip_typo           = dplyr::if_else(zip_missing,       FALSE, zip_typo          ),
+    
+    wrinkle_count      = gender_swapped + gender_missing + ssn_typo + ssn_missing + ethnicity_swapped  + ethnicity_missing + dob_increment + dob_missing + zip_typo + zip_missing + nicknamed
+  ) %>% 
+  dplyr::select(
+    
+    rown_o,
+    rown_o_w, 
+    
+    name_first,
+    name_first_w,
+    name_last,
+    name_last_w,
+    name_middle,
+    name_middle_w,
+    name_maiden,
+    name_maiden_w,
+    gender, 
+    gender_w,
+    ethnicity,
+    ethnicity_w,
+    dob,
+    dob_w,
+    zip_code,
+    zip_code_w,
+    ssn_fake,
+    ssn_fake_w,
+    
+    
+    name_middle_missing, 
+    name_maiden_missing,
+    gender_swapped,
+    gender_missing,
+    ssn_typo, 
+    ssn_missing,
+    ethnicity_swapped,
+    ethnicity_missing,
+    dob_increment, 
+    dob_missing,
+    zip_typo,
+    zip_missing,
+    name_first_nickname, 
+    nicknamed,
+    wrinkle_count,
+    
+  )
+
+ds_matching <-
+  ds_middleman %>% 
+  dplyr::mutate(
+    matching_row         = sample(c(1:nrow(ds_middleman)), size = nrow(ds_middleman), replace = FALSE),
+    matching_row_boolean = matching_row <= 2000
+  ) %>% 
+  dplyr::filter(matching_row_boolean) %>% 
+  dplyr::select(
+    - matching_row,
+    - matching_row_boolean
+  )
+
+
+ds_sample <-
+  ds_matching %>% 
+  dplyr::mutate(
+    sample_row         = sample(c(1:nrow(ds_matching)), size = nrow(ds_matching), replace = FALSE),
+    sample_row_boolean = sample_row <= 200
+  ) %>% 
+  dplyr::filter(sample_row_boolean)
+
+
+# ---- select-columns-to-write ---------------------------------------------------------------
+ds_matching_slim <-
+  ds_matching %>% 
+  dplyr::select(
+    rown_o,
+    "name_first",
+    "name_last", 
+    "name_middle",
+    "name_maiden",
+    "gender",
+    
+  )
+  
+
+
+"rown_o_w",
+
+
+"name_first_w",
+
+"name_last_w",
+
+"name_middle_w",
+
+"name_maiden_w",
+
+"gender_w",
+"ethnicity",
+"ethnicity_w", 
+"dob",
+"dob_w",
+"zip_code",
+"zip_code_w",
+"ssn_fake", "ssn_fake_w", 
+"name_middle_missing",
+"name_maiden_missing",
+"gender_swapped",
+"gender_missing",
+"ssn_typo",
+"ssn_missing",
+"ethnicity_swapped",
+"ethnicity_missing",
+"dob_increment",
+"dob_missing",
+"zip_typo",
+"zip_missing",
+"name_first_nickname",
+"nicknamed",
+"wrinkle_count"
+
+
+
+# rown_o,
+# 
+# name_first,
+# name_last,
+# name_middle,
+# name_maiden,
+# gender, 
+# ethnicity,
+# dob,
+# zip_code,
+# ssn_fake,
+# 
+# rown_o_w, 
+# name_first_w, 
+# name_last_w,
+# name_middle_w,
+# name_maiden_w,
+# gender_w, 
+# ethnicity_w,
+# dob_w,
+# zip_code_w,
+# ssn_fake_w, 
+# 
+# 
+# name_middle_missing, 
+# name_maiden_missing,
+# gender_swapped,
+# gender_missing,
+# ssn_typo, 
+# ssn_missing,
+# ethnicity_swapped,
+# ethnicity_missing,
+# dob_increment, 
+# dob_missing,
+# zip_typo,
+# zip_missing,
+# name_first_nickname, 
+# nicknamed,
+# wrinkle_count,
