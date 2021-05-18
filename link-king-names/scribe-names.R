@@ -16,14 +16,15 @@ requireNamespace("forcats"                    )
 
 # ---- declare-globals ---------------------------------------------------------
 # readr::spec_csv(path_in)
-path_in      <- "./link-king-names/names-celebrities/names_raw.csv"
-
+path_in           <- "./link-king-names/names-celebrities/names_raw.csv"
+path_out_matching <- "./link-king-names/names-for-link-king/ds_matching.csv"
+path_out_linking  <- "./link-king-names/names-for-link-king/ds_sample.csv"
 
 col_types = readr::cols_only(
     birth_year     = readr::col_integer(),
-    primary_name   = readr::col_character()
-    # X3             = readr::col_character(),
-    # X4             = readr::col_character()
+    primary_name   = readr::col_character(),
+    X3             = readr::col_character(),
+    X4             = readr::col_character()
 )
 
 fake_ssn_with_repeats_function <- function(d){
@@ -97,12 +98,9 @@ generate_nickname <- function(d){
 
 
 # ---- load-data ---------------------------------------------------------------
-# ds_with_duplicates <- readr::read_csv(path_in, col_types=col_types)
-# ds_with_duplicates <- readr::read_csv(path_in, col_types=col_types, local = readr::locale(encoding = "ISO-8859-1"))
-# ds_with_duplicates <- readr::read_csv(path_in, col_types=col_types, local = readr::locale(encoding = "UTF-8"))
 ds_names_raw <- readr::read_csv(path_in, col_types=col_types)
 
-rm(path_in, col_types)
+# rm(path_in, col_types)
 
 
 # ---- tweak-data ---------------------------------------------------------------
@@ -123,8 +121,7 @@ ds_middleman <-
   dplyr::mutate(
     rown_o = 1:dplyr::n(),
   ) %>% 
-  dplyr::filter(rown_o <= 3000 ) %>%
-  dplyr::filter(!is.na(birth_year)) %>% 
+  dplyr::filter(rown_o <= 20000 ) %>% 
   dplyr::group_by(rown_o) %>% 
   dplyr::mutate(
     count_name_segments = length(strsplit(primary_name, " ")[[1]]),
@@ -134,30 +131,34 @@ ds_middleman <-
   dplyr::ungroup() %>% 
   dplyr::filter(count_name_segments <= 2) %>% 
   dplyr::mutate(
-   name_middle = dplyr::lag(name_first, 1),
-   name_middle = dplyr::if_else(!is.na(name_middle), name_middle, dplyr::lead(name_first, 1)),
+    random_birth_year_int = sample(c(1927:2008), size = dplyr::n(), replace = TRUE),
+    birth_year            = dplyr::if_else(!is.na(birth_year), birth_year, random_birth_year_int),
+    
+    
+    name_middle = dplyr::lag(name_first, 1),
+    name_middle = dplyr::if_else(!is.na(name_middle), name_middle, dplyr::lead(name_first, 1)),
    
-   name_maiden = dplyr::lead(name_last, 1),
-   name_maiden = dplyr::if_else(!is.na(name_maiden), name_maiden, dplyr::lag(name_last, 1)),
+    name_maiden = dplyr::lead(name_last, 1),
+    name_maiden = dplyr::if_else(!is.na(name_maiden), name_maiden, dplyr::lag(name_last, 1)),
    
-   gender      = sample(0:1, dplyr::n(), replace = TRUE),
-   gender      = dplyr::if_else(gender == 1, "Male", "Female"),
+    gender      = sample(0:1, dplyr::n(), replace = TRUE),
+    gender      = dplyr::if_else(gender == 1, "Male", "Female"),
    
-   ethnicity   = sample(1:5, dplyr::n(), replace = TRUE),
-   ethnicity   = dplyr::case_when(
-     ethnicity == 1 ~ "Asian",
-     ethnicity == 2 ~ "African American",
-     ethnicity == 3 ~ "Caucasian",
-     ethnicity == 4 ~ "Hispanic",
-     ethnicity == 5 ~ "Native American",
-   ),
+    ethnicity   = sample(1:5, dplyr::n(), replace = TRUE),
+    ethnicity   = dplyr::case_when(
+      ethnicity == 1 ~ "Asian",
+      ethnicity == 2 ~ "African American",
+      ethnicity == 3 ~ "Caucasian",
+      ethnicity == 4 ~ "Hispanic",
+      ethnicity == 5 ~ "Native American",
+    ),
    
-   birth_day   = sample(1:28, dplyr::n(), replace = TRUE),
-   birth_month = sample(1:12, dplyr::n(), replace = TRUE),
-   
-   dob         = as.Date(paste(birth_year, birth_month, birth_day, sep = "-")),
-   
-   zip_code    = as.integer(zip_code(n = dplyr::n(), k = dplyr::n()))
+    birth_day   = sample(1:28, dplyr::n(), replace = TRUE),
+    birth_month = sample(1:12, dplyr::n(), replace = TRUE),
+    
+    dob         = as.Date(paste(birth_year, birth_month, birth_day, sep = "-")),
+    
+    zip_code    = as.integer(zip_code(n = dplyr::n(), k = dplyr::n()))
    
   ) %>% 
   fake_ssn_with_repeats_function() %>% 
@@ -281,118 +282,98 @@ ds_middleman <-
     nicknamed,
     wrinkle_count,
     
+  ) %>% 
+  dplyr::mutate(
+    random_sample_int           = sample(c(1:nrow(ds_middleman)), size = nrow(ds_middleman), replace = FALSE),
+    grab_for_matching           = random_sample_int <= 2000,
+    grab_for_sample_possible    = random_sample_int <= 200,
+    grab_for_sample_impossible  = 3000 < random_sample_int & random_sample_int <=3200
   )
+
+ds_middleman %>% 
+  dplyr::count(
+    grab_for_matching,
+    grab_for_sample_possible,
+    grab_for_sample_impossible,
+  ) %>% 
+  View()
+
 
 ds_matching <-
   ds_middleman %>% 
-  dplyr::mutate(
-    matching_row         = sample(c(1:nrow(ds_middleman)), size = nrow(ds_middleman), replace = FALSE),
-    matching_row_boolean = matching_row <= 2000
-  ) %>% 
-  dplyr::filter(matching_row_boolean) %>% 
-  dplyr::select(
-    - matching_row,
-    - matching_row_boolean
-  )
-
+  dplyr::filter(grab_for_matching)
 
 ds_sample <-
-  ds_matching %>% 
-  dplyr::mutate(
-    sample_row         = sample(c(1:nrow(ds_matching)), size = nrow(ds_matching), replace = FALSE),
-    sample_row_boolean = sample_row <= 200
-  ) %>% 
-  dplyr::filter(sample_row_boolean)
-
+  ds_middleman %>% 
+  dplyr::filter(grab_for_sample_possible | grab_for_sample_impossible)
+ 
 
 # ---- select-columns-to-write ---------------------------------------------------------------
 ds_matching_slim <-
   ds_matching %>% 
   dplyr::select(
     rown_o,
-    "name_first",
-    "name_last", 
-    "name_middle",
-    "name_maiden",
-    "gender",
+    name_first,
+    name_last, 
+    name_middle,
+    name_maiden,
+    gender,
+    ethnicity,
+    dob,
+    zip_code,
+    ssn_fake,
+    
+    wrinkle_count,
+    name_middle_missing,
+    name_maiden_missing,
+    gender_swapped,
+    gender_missing,
+    ssn_typo,
+    ssn_missing,
+    ethnicity_swapped,
+    ethnicity_missing,
+    dob_increment,
+    dob_missing,
+    zip_typo,
+    zip_missing,
+    nicknamed,
     
   )
-  
 
+ds_sample_slim <-
+  ds_sample %>% 
+  dplyr::select(
+    rown_o_w, 
+    name_first_w, 
+    name_last_w,
+    name_middle_w,
+    name_maiden_w,
+    gender_w, 
+    ethnicity_w,
+    dob_w,
+    zip_code_w,
+    ssn_fake_w, 
+    
+    wrinkle_count,
+    name_middle_missing,
+    name_maiden_missing,
+    gender_swapped,
+    gender_missing,
+    ssn_typo,
+    ssn_missing,
+    ethnicity_swapped,
+    ethnicity_missing,
+    dob_increment,
+    dob_missing,
+    zip_typo,
+    zip_missing,
+    nicknamed,
+    
+    grab_for_sample_possible,
+    grab_for_sample_impossible,
+  )
 
-"rown_o_w",
+stop()
+# ---- write-data ---------------------------------------------------------------
+# readr::write_csv(ds_ds_matching_slim, path = path_out_matching, na = "")
 
-
-"name_first_w",
-
-"name_last_w",
-
-"name_middle_w",
-
-"name_maiden_w",
-
-"gender_w",
-"ethnicity",
-"ethnicity_w", 
-"dob",
-"dob_w",
-"zip_code",
-"zip_code_w",
-"ssn_fake", "ssn_fake_w", 
-"name_middle_missing",
-"name_maiden_missing",
-"gender_swapped",
-"gender_missing",
-"ssn_typo",
-"ssn_missing",
-"ethnicity_swapped",
-"ethnicity_missing",
-"dob_increment",
-"dob_missing",
-"zip_typo",
-"zip_missing",
-"name_first_nickname",
-"nicknamed",
-"wrinkle_count"
-
-
-
-# rown_o,
-# 
-# name_first,
-# name_last,
-# name_middle,
-# name_maiden,
-# gender, 
-# ethnicity,
-# dob,
-# zip_code,
-# ssn_fake,
-# 
-# rown_o_w, 
-# name_first_w, 
-# name_last_w,
-# name_middle_w,
-# name_maiden_w,
-# gender_w, 
-# ethnicity_w,
-# dob_w,
-# zip_code_w,
-# ssn_fake_w, 
-# 
-# 
-# name_middle_missing, 
-# name_maiden_missing,
-# gender_swapped,
-# gender_missing,
-# ssn_typo, 
-# ssn_missing,
-# ethnicity_swapped,
-# ethnicity_missing,
-# dob_increment, 
-# dob_missing,
-# zip_typo,
-# zip_missing,
-# name_first_nickname, 
-# nicknamed,
-# wrinkle_count,
