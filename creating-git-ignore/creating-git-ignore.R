@@ -17,9 +17,23 @@ gi_write_gitignore(git_ignore_text, gitignore_file = here::here(".gitignore"))
 
 
 # Adding this line of text to gitigore file to identify data-unshared folder (without the quotes)
-# "# ---- Protected Information -----------------------------------------------"
+# Also wipes out any file types in the following list.
+# "# ---- Protected Information -----------------------------------------------
 # "/data-unshared/*"
-
+# *.rdata
+# *.Rdata
+# *.RData
+# *.RDATA
+# *.RDS
+# *.rds
+# *.csv
+# *.csv#
+# *.mdb
+# *.accdb
+# *.sav
+# *.sas7bdat
+# *.xls
+# *.xlsx"
 
 # ---- testing
 ds_test <- tibble::as_tibble(head(mtcars))

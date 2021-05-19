@@ -93,6 +93,19 @@ vignettes/*.pdf
 
 # ---- Protected Information -----------------------------------------------
 /data-unshared/*
-
+*.rdata
+*.Rdata
+*.RData
+*.RDATA
+*.RDS
+*.rds
+*.csv
+*.csv#
+*.mdb
+*.accdb
+*.sav
+*.sas7bdat
+*.xls
+*.xlsx
 
 # End of https://www.toptal.com/developers/gitignore/api/r
