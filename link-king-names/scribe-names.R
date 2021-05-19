@@ -113,7 +113,7 @@ ds_middleman <-
   dplyr::mutate(
     rown_o = 1:dplyr::n(),
   ) %>% 
-  dplyr::filter(rown_o <= 20000 ) %>% 
+  dplyr::filter(rown_o <= 50000 ) %>% 
   dplyr::group_by(rown_o) %>% 
   dplyr::mutate(
     count_name_segments = length(strsplit(primary_name, " ")[[1]]),
@@ -122,6 +122,9 @@ ds_middleman <-
   ) %>% 
   dplyr::ungroup() %>% 
   dplyr::filter(count_name_segments <= 2) %>% 
+  dplyr::filter(!is.na(name_last)) %>% 
+  dplyr::filter(2 <= nchar(name_first)) %>% 
+  dplyr::filter(2 <= nchar(name_last)) %>% 
   dplyr::mutate(
     random_birth_year_int = sample(c(1927:2008), size = dplyr::n(), replace = TRUE),
     birth_year            = dplyr::if_else(!is.na(birth_year), birth_year, random_birth_year_int),
@@ -278,22 +281,21 @@ ds_middleman <-
   dplyr::mutate(
     # random_sample_int           = sample(c(1:nrow(ds_middleman)), size = nrow(ds_middleman), replace = FALSE),
     random_sample_int           = sample(c(1:dplyr::n()), size = dplyr::n(), replace = FALSE),
-    grab_for_matching           = random_sample_int <= 2000,
-    grab_for_sample_possible    = random_sample_int <= 200,
-    grab_for_sample_impossible  = 3000 < random_sample_int & random_sample_int <=3200,
+    grab_for_matching           = random_sample_int <= 40000,
+    grab_for_sample_possible    = random_sample_int <= 3000,
+    grab_for_sample_impossible  = 41000 < random_sample_int & random_sample_int <= 42000,
     
     dob   = format(dob  , "%Y%m%d"),
     dob_w = format(dob_w, "%Y%m%d"),
   )
 
-# ds_middleman %>%
-#   dplyr::count(
-#     grab_for_matching,
-#     grab_for_sample_possible,
-#     grab_for_sample_impossible,
-#   ) %>%
-#   View()
-
+ds_middleman %>%
+  dplyr::count(
+    grab_for_matching,
+    grab_for_sample_possible,
+    grab_for_sample_impossible,
+  ) %>%
+  View()
 
 ds_matching <-
   ds_middleman %>% 
