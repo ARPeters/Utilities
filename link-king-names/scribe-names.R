@@ -104,14 +104,6 @@ ds_names_raw <- readr::read_csv(path_in, col_types=col_types)
 
 
 # ---- tweak-data ---------------------------------------------------------------
-# dsq <-
-#   ds_names_raw %>%
-#   tibble::as_tibble() %>% 
-#   dplyr::mutate(
-#     rown = 1:dplyr::n()
-#   ) %>% 
-#   dplyr::filter(!is.na(X3) | !is.na(X4))
-
 set.seed(1321)
 
 floor(runif(19, min = 0, max = 2))
@@ -288,7 +280,10 @@ ds_middleman <-
     random_sample_int           = sample(c(1:dplyr::n()), size = dplyr::n(), replace = FALSE),
     grab_for_matching           = random_sample_int <= 2000,
     grab_for_sample_possible    = random_sample_int <= 200,
-    grab_for_sample_impossible  = 3000 < random_sample_int & random_sample_int <=3200
+    grab_for_sample_impossible  = 3000 < random_sample_int & random_sample_int <=3200,
+    
+    dob   = format(dob  , "%Y%m%d"),
+    dob_w = format(dob_w, "%Y%m%d"),
   )
 
 # ds_middleman %>%
@@ -376,5 +371,6 @@ ds_sample_slim <-
 
 
 # ---- write-data ---------------------------------------------------------------
-# readr::write_csv(ds_ds_matching_slim, path = path_out_matching, na = "")
+readr::write_csv(ds_matching_slim, path = path_out_matching, na = "")
+readr::write_csv(ds_sample_slim  , path = path_out_linking , na = "")
 
