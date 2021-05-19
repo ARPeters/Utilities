@@ -16,9 +16,9 @@ requireNamespace("forcats"                    )
 
 # ---- declare-globals ---------------------------------------------------------
 # readr::spec_csv(path_in)
-path_in           <- "./link-king-names/names-celebrities/names_raw.csv"
-path_out_matching <- "./link-king-names/names-for-link-king/ds_matching.csv"
-path_out_linking  <- "./link-king-names/names-for-link-king/ds_sample.csv"
+path_in           <- "./data-unshared/names-celebrities/names_raw.csv"
+path_out_matching <- "./data-unshared/names-for-link-king/ds_matching.csv"
+path_out_linking  <- "./data-unshared/names-for-link-king/ds_sample.csv"
 
 col_types = readr::cols_only(
     birth_year     = readr::col_integer(),
@@ -284,19 +284,20 @@ ds_middleman <-
     
   ) %>% 
   dplyr::mutate(
-    random_sample_int           = sample(c(1:nrow(ds_middleman)), size = nrow(ds_middleman), replace = FALSE),
+    # random_sample_int           = sample(c(1:nrow(ds_middleman)), size = nrow(ds_middleman), replace = FALSE),
+    random_sample_int           = sample(c(1:dplyr::n()), size = dplyr::n(), replace = FALSE),
     grab_for_matching           = random_sample_int <= 2000,
     grab_for_sample_possible    = random_sample_int <= 200,
     grab_for_sample_impossible  = 3000 < random_sample_int & random_sample_int <=3200
   )
 
-ds_middleman %>% 
-  dplyr::count(
-    grab_for_matching,
-    grab_for_sample_possible,
-    grab_for_sample_impossible,
-  ) %>% 
-  View()
+# ds_middleman %>%
+#   dplyr::count(
+#     grab_for_matching,
+#     grab_for_sample_possible,
+#     grab_for_sample_impossible,
+#   ) %>%
+#   View()
 
 
 ds_matching <-
@@ -373,7 +374,7 @@ ds_sample_slim <-
     grab_for_sample_impossible,
   )
 
-stop()
+
 # ---- write-data ---------------------------------------------------------------
 # readr::write_csv(ds_ds_matching_slim, path = path_out_matching, na = "")
 
