@@ -234,7 +234,7 @@ ds_middleman <-
     dob_increment      = dplyr::if_else(dob_missing,       FALSE, dob_increment     ),
     zip_typo           = dplyr::if_else(zip_missing,       FALSE, zip_typo          ),
     
-    wrinkle_count      = gender_swapped + gender_missing + ssn_typo + ssn_missing + ethnicity_swapped  + ethnicity_missing + dob_increment + dob_missing + zip_typo + zip_missing + nicknamed
+    wrinkle_count      = name_middle_missing + name_maiden_missing + gender_swapped + gender_missing + ssn_typo + ssn_missing + ethnicity_swapped  + ethnicity_missing + dob_increment + dob_missing + zip_typo + zip_missing + nicknamed
   ) %>% 
   dplyr::select(
     

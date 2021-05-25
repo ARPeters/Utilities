@@ -9,6 +9,7 @@ rm(list=ls(all=TRUE)) #Clear the memory for any variables set from any previous 
 library(magrittr                , quietly=TRUE)
 library(stringr                               )
 library(wakefield                             )
+library(plotly                                ) # devtools::install_github("ropensci/plotly")
 requireNamespace("dplyr"                      )
 requireNamespace("lubridate"                  )
 requireNamespace("forcats"                    )
@@ -164,7 +165,216 @@ ds_links <-
     uncertainty_int
   )
 
+ds_sample <-
+  ds_sample_0 %>% 
+  dplyr::mutate(
+    wrinkle_count_corrected = name_middle_missing + name_maiden_missing + gender_swapped + gender_missing + ssn_typo + ssn_missing + ethnicity_swapped  + ethnicity_missing + dob_increment + dob_missing + zip_typo + zip_missing + nicknamed
+  )
+  
+ds_matching <-
+  ds_matching_0 %>% 
+  dplyr::mutate(
+    rown_o_w = paste0("w",rown_o)
+  ) %>% 
+  dplyr::select(
+    rown_o,
+    rown_o_w,
+    
+    name_first,
+    name_last,
+    name_middle,
+    name_maiden, 
+    gender,
+    ethnicity,
+    dob,
+    zip_code,
+    ssn_fake
+  )
 
+ds_results_sample_possible <-
+  ds_sample %>% 
+  dplyr::filter(grab_for_sample_possible) %>%  # nrow(ds_results_sample_possible) = 3000
+  dplyr::left_join(
+    ds_matching,
+    by = c("rown_o_w" = "rown_o_w")
+  ) %>% # nrow(ds_results_sample_possible) = 3000
+  dplyr::left_join(
+    ds_links,
+    by = c("rown_o_w" = "rown_o_sample")
+  ) %>%  # nrow(ds_results_sample_possible) = 3000
+  dplyr::mutate(
+    has_a_link   = dplyr::if_else(!is.na(link_correct), TRUE , FALSE),
+    # link_correct = dplyr::if_else(is.na(link_correct) , FALSE, link_correct),
+    
+    uncertainty_plus_link = dplyr::if_else(!link_correct & is.na(uncertainty_int), 10L, uncertainty_int )
+    
+  ) %>% 
+  dplyr::select(
+    rown_o_w,
+    rown_o,
+    
+    has_a_link,
+    link_correct,
+    uncertainty_int,
+    wrinkle_count_corrected,
+    
+    uncertainty_plus_link,
+    
+    name_first, 
+    name_first_w,
+    name_last,
+    name_last_w,
+    name_middle,
+    name_middle_w, 
+    name_maiden,
+    name_maiden_w,
+    gender,
+    gender_w,
+    ethnicity, 
+    ethnicity_w,
+    dob,
+    dob_w,
+    zip_code,
+    zip_code_w, 
+    ssn_fake,
+    ssn_fake_w,
+    
+    name_middle_missing,
+    name_maiden_missing, 
+    gender_swapped,
+    gender_missing,
+    ssn_typo,
+    ssn_missing, 
+    ethnicity_swapped,
+    ethnicity_missing,
+    dob_increment,
+    dob_missing, 
+    zip_typo,
+    zip_missing,
+    nicknamed,
+  )
+
+ds_results_sample_impossible <-
+  ds_sample %>% 
+  dplyr::filter(grab_for_sample_impossible) %>% # nrow(ds_results_sample_impossible) = 1000
+  dplyr::left_join(
+    ds_links,
+    by = c("rown_o_w" = "rown_o_sample")
+  ) %>% 
+  dplyr::mutate(
+    failure_correct = dplyr::if_else(is.na(link_correct), TRUE, FALSE)
+  )
+
+
+# ---- table-results-simple ---------------------------------------------------------------
+table_correct_links_possible <-
+  ds_results_sample_possible %>% 
+  dplyr::summarize(
+    count            = dplyr::n(),
+    
+    count_correct       = sum(link_correct, na.rm = TRUE),
+    prop_correct        = count_correct / count,
+    
+    count_failed        = sum(!has_a_link, na.rm = TRUE),
+    prop_failed         = count_failed / count,
+    
+    count_misleading    = sum(has_a_link & !link_correct, na.rm = TRUE),
+    prop_misleading     = count_misleading / count,
+    
+  ) %>% 
+  dplyr::mutate(
+    Count_of_Possible_Sample_Rows = count,
+    
+    Count_of_True_Positives       = paste0(round(count_correct    , 2), " ( ", 100L*prop_correct    , "% )"),
+    Count_of_False_Negatives      = paste0(round(count_failed     , 2), " ( ", 100L*prop_failed     , "% )"),
+    Count_of_Misleading_Positives = paste0(round(count_misleading , 2), " ( ", 100L*prop_misleading , "% )"),
+    
+  ) %>% 
+  dplyr::select(
+    Count_of_Possible_Sample_Rows,
+    Count_of_True_Positives,
+    Count_of_False_Negatives,
+    Count_of_Misleading_Positives
+  ) %>% 
+  DT::datatable(
+    colnames=gsub("_", " ", colnames(.)),
+    options = list(
+      pageLength = 25,
+      columnDefs = list(list(className = 'dt-center', targets = 1:4))
+    )
+  )
+
+table_correct_links_impossible <-
+  ds_results_sample_impossible %>% 
+  dplyr::summarize(
+    count = dplyr::n(),
+    
+    count_unlinked_correct = sum(failure_correct),
+    prop_unlinked_correct  = count_unlinked_correct / count,
+    
+    count_unlinked_incorrect = sum(!failure_correct),
+    prop_unlinked_incorrect  = count_unlinked_incorrect / count
+    
+  ) %>% 
+  dplyr::mutate(
+    Count_of_Unmatchable_Sample_Rows = count,
+    
+    Count_of_True_Negative_Links  = paste0(count_unlinked_correct  , " ( ", 100L*prop_unlinked_correct  , "% )"),
+    Count_of_False_Positive_Links = paste0(count_unlinked_incorrect, " ( ", 100L*prop_unlinked_incorrect, "% )"),
+  ) %>% 
+  dplyr::select(
+    Count_of_Unmatchable_Sample_Rows,
+    Count_of_True_Negative_Links,
+    Count_of_False_Positive_Links,
+  ) %>% 
+  DT::datatable(
+    colnames=gsub("_", " ", colnames(.)),
+    options = list(
+      pageLength = 25,
+      columnDefs = list(list(className = 'dt-center', targets = 1:3))
+    )
+  )
+
+table_correct_links_possible
+table_correct_links_impossible
+
+
+# ---- graph-wrinkle-links ---------------------------------------------------------------
+table_wrinkle_true_positives <-
+  ds_results_sample_possible %>% 
+  dplyr::group_by(wrinkle_count_corrected) %>% 
+  dplyr::summarize(
+    count                = dplyr::n(),
+    count_true_positives = sum(has_a_link, na.rm = TRUE),
+    prop_true_positives  = count_true_positives / count
+  ) %>% 
+  dplyr::ungroup() 
+
+graph_wrinkle_true_positives <-
+  table_wrinkle_true_positives %>% 
+  ggplot(
+    aes(
+      x = wrinkle_count_corrected,
+      y = prop_true_positives
+    )
+  ) +
+  geom_line() +
+  geom_point(
+    aes(size = count_true_positives),
+    alpha    = 0.5
+  ) +
+  coord_cartesian(ylim = c(0,1)) +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "blue", alpha = 0.5)+
+  scale_y_continuous(labels = scales::percent) +
+  # repo_theme(14) +
+  theme(legend.position = "right") +
+  labs(
+    x        = "Wrinkle Count",
+    y        = "Percentage: True Positive",
+    title    = "Percentage of Accurately Linked Rows by Count of Wrinkles\nThe blue line represents a 50% of rows being correctly linked."
+  )
+
+graph_wrinkle_true_positives %>%  ggplotly(height = 500, width = 700)
 
 
 
