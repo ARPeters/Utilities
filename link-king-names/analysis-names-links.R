@@ -86,6 +86,19 @@ col_types_links = readr::cols_only(
   # first_collision                 = readr::col_double()
 )
 
+characterize_p_value = function(pvar){
+  pvar = round(pvar, 3)
+  pvar_char = dplyr::case_when(
+    pvar <= 0.001 ~ "<0.001***",
+    pvar <= 0.01  ~ paste0(" ", as.character(pvar), "** "),
+    pvar <= 0.05  ~ paste0(" ", as.character(pvar), "*  "),
+    0.05 <  pvar  ~ paste0(" ", as.character(pvar), "   ")
+  )
+  
+  return(pvar_char)
+}
+
+
 # ---- load-data ---------------------------------------------------------------
 ds_links_0    <- readr::read_csv(path_in_links    , col_types=col_types_links )
 ds_matching_0 <- readr::read_csv(path_in_matching                             )
@@ -283,7 +296,7 @@ table_correct_links_possible <-
     
   ) %>% 
   dplyr::mutate(
-    Count_of_Possible_Sample_Rows = count,
+    Count_of_Matcheable_Sample_Rows = count,
     
     Count_of_True_Positives       = paste0(round(count_correct    , 2), " ( ", 100L*prop_correct    , "% )"),
     Count_of_False_Negatives      = paste0(round(count_failed     , 2), " ( ", 100L*prop_failed     , "% )"),
@@ -291,16 +304,17 @@ table_correct_links_possible <-
     
   ) %>% 
   dplyr::select(
-    Count_of_Possible_Sample_Rows,
+    Count_of_Matcheable_Sample_Rows,
     Count_of_True_Positives,
     Count_of_False_Negatives,
     Count_of_Misleading_Positives
   ) %>% 
   DT::datatable(
-    colnames=gsub("_", " ", colnames(.)),
+    colnames = gsub("_", " ", colnames(.)),
+    rownames = FALSE,
     options = list(
       pageLength = 25,
-      columnDefs = list(list(className = 'dt-center', targets = 1:4))
+      columnDefs = list(list(className = 'dt-center', targets = 0:3))
     )
   )
 
@@ -328,10 +342,11 @@ table_correct_links_impossible <-
     Count_of_False_Positive_Links,
   ) %>% 
   DT::datatable(
-    colnames=gsub("_", " ", colnames(.)),
+    colnames = gsub("_", " ", colnames(.)),
+    rownames = FALSE,
     options = list(
       pageLength = 25,
-      columnDefs = list(list(className = 'dt-center', targets = 1:3))
+      columnDefs = list(list(className = 'dt-center', targets = 0:2))
     )
   )
 
@@ -371,12 +386,139 @@ graph_wrinkle_true_positives <-
   labs(
     x        = "Wrinkle Count",
     y        = "Percentage: True Positive",
-    title    = "Percentage of Accurately Linked Rows by Count of Wrinkles\nThe blue line represents a 50% of rows being correctly linked."
+    title    = "Percentage of Accurately Linked Rows by Count of Wrinkles\nThe blue line represents 50% of rows being correctly linked."
   )
 
-graph_wrinkle_true_positives %>%  ggplotly(height = 500, width = 700)
+graph_wrinkle_true_positives %>% ggplotly(height = 500, width = 700)
 
 
+# ---- model-links-wrinkle-count ---------------------------------------------------------------
+model_logistic_link_1 <-
+  glm(
+    has_a_link ~ 
+      # uncertainty_int +
+      wrinkle_count_corrected,
+    
+    family = "binomial",
+    data = ds_results_sample_possible
+  )
+
+model_logistic_link_1 <-
+  glm(
+    has_a_link ~ 
+      wrinkle_count_corrected,
+    
+    family = "binomial",
+    data = ds_results_sample_possible
+  ) %>% 
+  summary()
+
+Covariate_brief <- 
+  c(
+    "Intercept",
+    "Wrinkle Count"
+  )
+
+table_model_logistic_link_1 <- 
+  model_logistic_link_1$coefficients %>% 
+  tibble::as_tibble() %>% 
+  cbind(Covariate_brief) %>% 
+  dplyr::select(
+    Covariate = "Covariate_brief",
+    `Estimate`,
+    `Std. Error`,
+    `z value`,
+    `Pr(>|z|)`,
+  ) %>% 
+  dplyr::mutate(
+    `Estimate`   = round(`Estimate`   , 3),
+    `Std. Error` = round(`Std. Error` , 3),
+    `z value`    = round(`z value`    , 3),
+    
+    `Pr(>|z|)`  = characterize_p_value(`Pr(>|z|)`)
+  ) %>% 
+  DT::datatable(
+    rownames = FALSE,
+    escape   = FALSE,
+    options = list(
+      pageLength = 25,
+      escape = FALSE,
+      # columnDefs = list(list(className = 'dt-right' , targets = 0)),
+      columnDefs = list(list(className = 'dt-center', targets = 0:3))
+    )
+  )
+
+table_model_logistic_link_1
 
 
+# ---- model-links-wrinkle-specific ---------------------------------------------------------------
+model_logistic_link_2 <-
+  glm(
+    has_a_link ~ 
+      name_middle_missing +
+      name_maiden_missing +
+      gender_swapped +
+      gender_missing +
+      ssn_typo +
+      ssn_missing +
+      ethnicity_swapped +
+      ethnicity_missing +
+      dob_increment +
+      dob_missing +
+      zip_typo +
+      zip_missing +
+      nicknamed,
+    
+    family = "binomial",
+    data = ds_results_sample_possible
+  ) %>% 
+  summary()
 
+Covariate_specific <- 
+  c(
+    "Intercept",
+    "Missing Middle Name",
+    "Missing Maiden Name",
+    "Gender Miscoded",
+    "Gender Missing",
+    "SSN Has 1 Character Typo",
+    "SSN Missing",
+    "Ethnicity Miscoded",
+    "Ethnicity Missing",
+    "DOB Has 1 Character Typo",
+    "DOB Missing",
+    "Zip Has 1 Character Typo",
+    "Zip Missing",
+    "Nickname"
+  )
+
+table_model_logistic_link_2 <- 
+  model_logistic_link_2$coefficients %>% 
+  tibble::as_tibble() %>% 
+  cbind(Covariate_specific) %>% 
+  dplyr::select(
+    Covariate = "Covariate_specific",
+    `Estimate`,
+    `Std. Error`,
+    `z value`,
+    `Pr(>|z|)`,
+  ) %>% 
+  dplyr::mutate(
+    `Estimate`   = round(`Estimate`   , 3),
+    `Std. Error` = round(`Std. Error` , 3),
+    `z value`    = round(`z value`    , 3),
+    
+    `Pr(>|z|)`  = characterize_p_value(`Pr(>|z|)`)
+  ) %>% 
+  DT::datatable(
+    rownames = FALSE,
+    escape   = FALSE,
+    options = list(
+      pageLength = 25,
+      escape = FALSE,
+      # columnDefs = list(list(className = 'dt-right' , targets = 0)),
+      columnDefs = list(list(className = 'dt-center', targets = 0:3))
+    )
+  )
+
+table_model_logistic_link_2
