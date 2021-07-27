@@ -106,7 +106,7 @@ ds_names_raw <- readr::read_csv(path_in, col_types=col_types)
 # ---- tweak-data ---------------------------------------------------------------
 set.seed(1321)
 
-floor(runif(19, min = 0, max = 2))
+# floor(runif(19, min = 0, max = 2))
 
 ds_middleman <-
   ds_names_raw %>% 
@@ -159,8 +159,12 @@ ds_middleman <-
   fake_ssn_with_repeats_function() %>% 
   dplyr::distinct(ssn_fake, .keep_all = TRUE) %>% 
   dplyr::mutate(
+    
     rown_o          = as.character(rown_o),
     rown_o_w        = paste0("w",rown_o),
+    
+    # preferred_int   = 1:dplyr::n(),
+    # preferred_int   = dplyr::if_else(as.integer(preferred_int) <= 4000, preferred_int, 0L),
     
     name_first_w    = name_first,
     name_last_w     = name_last,
@@ -240,6 +244,7 @@ ds_middleman <-
     
     rown_o,
     rown_o_w, 
+    # preferred_int,
     
     name_first,
     name_first_w,
@@ -276,10 +281,18 @@ ds_middleman <-
     name_first_nickname, 
     nicknamed,
     wrinkle_count,
-    
   ) %>% 
   dplyr::mutate(
-    # random_sample_int           = sample(c(1:nrow(ds_middleman)), size = nrow(ds_middleman), replace = FALSE),
+    # Less random sample for presentation purposes
+    # random_sample_int             = sample(c(1:dplyr::n()), size = dplyr::n(), replace = FALSE),
+    # 
+    # random_sample_int_plus_preferred = random_sample_int + max(preferred_int),
+    # random_sample_int_synthesized    = dplyr::if_else(1 <= preferred_int, preferred_int, random_sample_int_plus_preferred),
+    # 
+    # grab_for_matching             = random_sample_int_synthesized <= 40000,
+    # grab_for_sample_possible      = random_sample_int_synthesized <= 3000,
+    # grab_for_sample_impossible    = 41000 < random_sample_int_synthesized & random_sample_int_synthesized <= 42000,
+    
     random_sample_int           = sample(c(1:dplyr::n()), size = dplyr::n(), replace = FALSE),
     grab_for_matching           = random_sample_int <= 40000,
     grab_for_sample_possible    = random_sample_int <= 3000,
@@ -373,6 +386,6 @@ ds_sample_slim <-
 
 
 # ---- write-data ---------------------------------------------------------------
-readr::write_csv(ds_matching_slim, path = path_out_matching, na = "")
-readr::write_csv(ds_sample_slim  , path = path_out_linking , na = "")
+readr::write_csv(ds_matching_slim, file = path_out_matching, na = "")
+readr::write_csv(ds_sample_slim  , file = path_out_linking , na = "")
 
